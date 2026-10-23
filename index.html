@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-version="evergreen">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Figtree:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="assets/estimate.css">
 <style>
   /* Layout: a fixed frame of sagging light strands around one centered column that fits a phone screen.
      The estimate tool opens as a full-screen sheet so the home page stays one fold. */
@@ -28,6 +28,10 @@
     --body: "Figtree", "Segoe UI", system-ui, sans-serif;
     --frame: 46px;
     color-scheme: dark;
+    /* estimate sheet theme */
+    --q-bg: var(--night); --q-panel: var(--panel); --q-fg: var(--frost); --q-dim: var(--frost-dim);
+    --q-accent: var(--gold); --q-accent-ink: var(--night); --q-line: var(--line);
+    --q-display: var(--display); --q-body: var(--body);
   }
   *, *::before, *::after { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
@@ -41,7 +45,6 @@
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
-  body.sheet-open { overflow: hidden; }
   [hidden] { display: none !important; }
   button { font: inherit; color: inherit; }
 
@@ -98,7 +101,7 @@
   .services li:nth-child(3) { --c: var(--gold); } .services li:nth-child(4) { --c: #6fb4ff; }
 
   .contact { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-  .number { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 4px 10px; font-weight: 700; font-size: clamp(1.25rem, min(6.4vw, 3.6vh), 1.9rem); font-variant-numeric: tabular-nums; }
+  .number { display: flex; align-items: center; flex-wrap: wrap; justify-content: center; gap: 4px 10px; font-weight: 700; font-size: clamp(1.15rem, min(5.6vw, 3.2vh), 1.9rem); font-variant-numeric: tabular-nums; }
   .number .who { font-size: .62em; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--frost-dim); }
   .copy { font: 600 .72rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--frost-dim); background: none; border: 1px solid rgba(243,241,232,.25); border-radius: 999px; padding: 6px 10px; cursor: pointer; }
   .ctas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
@@ -112,100 +115,17 @@
   .btn.primary { width: 100%; background: var(--gold); color: var(--night); box-shadow: 0 0 26px rgba(242,195,91,.35); font-size: 1.05rem; }
   .btn.ghost { background: rgba(243,241,232,.06); color: var(--frost); border: 1.5px solid rgba(243,241,232,.7); }
   .btn:active { transform: scale(.97); }
-  .btn:focus-visible, .copy:focus-visible, .seg button:focus-visible, .tool:focus-visible, .icon-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+  .btn:focus-visible, .copy:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
   .urgent { margin: 0; font-weight: 700; font-size: clamp(.88rem, min(4vw, 2.1vh), 1.05rem); color: var(--green-lit); }
   footer p { margin: 0; font-size: .74rem; color: var(--frost-dim); }
 
   @media (min-width: 720px) { :root { --frame: 64px; } .inner { max-width: 34rem; } }
+  @media (max-height: 820px) and (max-width: 719px) { main > footer { display: none; } }
   @media (max-height: 700px) { .crest, .eyebrow { display: none; } }
   @media (max-height: 520px) { .services { grid-template-columns: repeat(4, 1fr); } .sub { display: none; } }
 
-  /* ---------- estimate sheet ---------- */
-  .sheet {
-    position: fixed; inset: 0; z-index: 20;
-    display: flex; flex-direction: column;
-    background: var(--night);
-    padding-top: env(safe-area-inset-top, 0px);
-    animation: rise .28s ease-out;
-  }
-  @keyframes rise { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
-  .sheet-head {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px max(14px, env(safe-area-inset-right, 0px)) 10px max(14px, env(safe-area-inset-left, 0px));
-    border-bottom: 1px solid var(--line);
-  }
-  .sheet-head h2 { margin: 0; flex: 1; font: 900 1.05rem/1.1 var(--display); letter-spacing: .06em; }
-  .rate { font-size: .75rem; font-weight: 700; color: var(--night); background: var(--gold); border-radius: 999px; padding: 5px 10px; font-variant-numeric: tabular-nums; }
-  .icon-btn { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--line); background: transparent; cursor: pointer; }
-  .icon-btn svg { width: 20px; height: 20px; }
-
-  .map-wrap { position: relative; flex: 1; min-height: 0; }
-  #map { position: absolute; inset: 0; background: #1a2a22; }
-  .search {
-    position: absolute; z-index: 1000; top: 10px;
-    left: max(10px, env(safe-area-inset-left, 0px)); right: max(10px, env(safe-area-inset-right, 0px));
-  }
-  .search input {
-    width: 100%; height: 48px; padding: 0 14px 0 42px;
-    border-radius: 12px; border: 1px solid rgba(0,0,0,.2);
-    background: var(--frost) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230c1f17' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-4-4'/%3E%3C/svg%3E") no-repeat 14px 50% / 18px;
-    color: var(--night); font: 600 16px var(--body);
-    box-shadow: 0 6px 20px rgba(0,0,0,.35);
-    color-scheme: light;
-  }
-  .search input::placeholder { color: #5d6b62; font-weight: 500; }
-  .search input:focus { outline: 2px solid var(--gold); outline-offset: 2px; }
-  .sugg { list-style: none; margin: 6px 0 0; padding: 4px; border-radius: 12px; background: var(--frost); color: var(--night); box-shadow: 0 10px 28px rgba(0,0,0,.4); max-height: 46vh; overflow-y: auto; }
-  .sugg li { padding: 10px 10px; border-radius: 8px; cursor: pointer; line-height: 1.25; }
-  .sugg li small { display: block; color: #5d6b62; font-size: .8rem; }
-  .sugg li:hover, .sugg li.active { background: #e3e8dc; }
-  .hint {
-    position: absolute; z-index: 999; left: 50%; bottom: 12px; transform: translateX(-50%);
-    width: max-content; max-width: calc(100% - 24px);
-    padding: 8px 12px; border-radius: 999px;
-    background: rgba(12,31,23,.88); border: 1px solid var(--line);
-    font-size: .82rem; font-weight: 600; text-align: center;
-    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  }
-  .hint.warn { border-color: var(--gold); color: var(--gold); }
-
-  .panel {
-    display: flex; flex-direction: column; gap: 10px;
-    padding: 12px max(14px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
-    background: var(--panel); border-top: 1px solid var(--line);
-  }
-  .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 12px; background: rgba(0,0,0,.28); }
-  .seg button { min-height: 38px; border: 0; border-radius: 9px; background: transparent; color: var(--frost-dim); font-weight: 700; font-size: .82rem; cursor: pointer; }
-  .seg button[aria-pressed="true"] { background: var(--frost); color: var(--night); }
-  .seg button:disabled { opacity: .4; cursor: not-allowed; }
-  .tools { display: flex; gap: 6px; }
-  .tool { flex: 1; min-height: 36px; border-radius: 9px; border: 1px solid var(--line); background: transparent; color: var(--frost); font-weight: 600; font-size: .82rem; cursor: pointer; }
-  .tool:disabled { opacity: .4; }
-  .total { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
-  .total .ft { font-size: .9rem; color: var(--frost-dim); font-variant-numeric: tabular-nums; }
-  .total .ft b { color: var(--frost); font-size: 1.15rem; }
-  .total .price { font: 900 clamp(1.7rem, 8vw, 2.3rem)/1 var(--display); color: var(--gold); font-variant-numeric: tabular-nums; }
-  .fine { margin: -4px 0 0; font-size: .72rem; color: var(--frost-dim); }
-  .panel .ctas .btn { min-height: 46px; font-size: .95rem; }
-  .btn.primary.slim { box-shadow: none; }
-  .btn[aria-disabled="true"] { opacity: .45; pointer-events: none; }
-
-  .leaflet-container { font-family: var(--body); }
-  .leaflet-control-attribution { font-size: 9px; background: rgba(255,255,255,.75) !important; }
-  .leaflet-control-zoom { display: none; }
-  .vtx { background: var(--gold); border: 2px solid var(--night); border-radius: 50%; box-shadow: 0 0 10px var(--gold); }
-  .len-tip { background: var(--night); color: var(--gold); border: 1px solid var(--gold); font: 700 11px var(--body); padding: 2px 6px; box-shadow: none; }
-  .len-tip::before { display: none; }
-
-  @media (min-width: 900px) {
-    .sheet { flex-direction: row; }
-    .sheet-head { position: absolute; z-index: 1001; top: 0; left: 0; right: 380px; background: rgba(12,31,23,.85); }
-    .map-wrap { order: 1; }
-    .search { top: 72px; max-width: 460px; }
-    .panel { order: 2; width: 380px; border-top: 0; border-left: 1px solid var(--line); justify-content: flex-end; }
-  }
   @media (prefers-reduced-motion: reduce) {
-    #lights .bulb, #lights .halo, .sheet { animation: none; }
+    #lights .bulb, #lights .halo { animation: none; }
   }
 </style>
 </head>
@@ -251,7 +171,7 @@
     </ul>
 
     <div class="contact">
-      <button class="btn primary" id="openQuote" type="button">
+      <button class="btn primary" data-estimate type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/></svg>
         Get my instant estimate
       </button>
@@ -265,57 +185,13 @@
           Text Ryan
         </a>
       </div>
-      <div class="number"><span class="who">Ryan</span><span id="phone">612-756-6991</span><button class="copy" id="copyBtn" type="button">Copy</button></div>
+      <div class="number"><span class="who">Ryan</span><span id="phone">612-756-6991</span><button class="copy" data-copy="612-756-6991" data-copy-target="phone" type="button">Copy</button></div>
       <p class="urgent">Book early. Slots fill fast!</p>
     </div>
   </div>
   <footer><p>Let your holiday shine bright with Holiday Knight Lights.</p></footer>
 </main>
 
-<!-- ============ Estimate sheet ============ -->
-<div class="sheet" id="quote" role="dialog" aria-modal="true" aria-labelledby="qTitle" hidden>
-  <div class="sheet-head">
-    <button class="icon-btn" id="closeQuote" type="button" aria-label="Back to home">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
-    </button>
-    <h2 id="qTitle">Instant Estimate</h2>
-    <span class="rate">$5 / ft</span>
-  </div>
-
-  <div class="map-wrap">
-    <div id="map" aria-label="Satellite map of your home"></div>
-    <div class="search">
-      <label for="addr" class="sr" hidden>Your address</label>
-      <input id="addr" type="search" placeholder="Enter your home address" autocomplete="street-address" enterkeyhint="search" aria-autocomplete="list" aria-controls="sugg">
-      <ul class="sugg" id="sugg" role="listbox" hidden></ul>
-    </div>
-    <div class="hint" id="hint">Search your address to start</div>
-  </div>
-
-  <div class="panel">
-    <div class="seg" role="group" aria-label="What to light">
-      <button type="button" data-mode="front" aria-pressed="true">Front only</button>
-      <button type="button" data-mode="full" aria-pressed="false">Whole house</button>
-      <button type="button" data-mode="trace" aria-pressed="false">Trace it</button>
-    </div>
-    <div class="tools" id="tools" hidden>
-      <button class="tool" id="undoBtn" type="button">Undo</button>
-      <button class="tool" id="newLineBtn" type="button">+ Add a side</button>
-      <button class="tool" id="clearBtn" type="button">Clear</button>
-    </div>
-    <div class="total" aria-live="polite">
-      <div class="ft"><b id="ftOut">0</b> ft of lights</div>
-      <div class="price" id="priceOut">$0</div>
-    </div>
-    <p class="fine" id="fine">Estimate based on satellite outlines. Ryan confirms the final price before install.</p>
-    <div class="ctas">
-      <a class="btn primary slim" id="sendQuote" href="sms:+16127566991" aria-disabled="true">Text quote to Ryan</a>
-      <button class="btn ghost" id="copyQuote" type="button">Copy quote</button>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 /* ================= Lights border ================= */
 (function () {
@@ -434,292 +310,8 @@
   requestAnimationFrame(frame);
 })();
 
-/* ================= Copy helpers ================= */
-function copyText(text, btn, fallbackEl) {
-  const label = btn.textContent;
-  const flash = (t) => { btn.textContent = t; setTimeout(() => (btn.textContent = label), 1600); };
-  const fallback = () => {
-    if (fallbackEl) { const r = document.createRange(); r.selectNodeContents(fallbackEl); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
-    flash('Select & copy');
-  };
-  try { navigator.clipboard.writeText(text).then(() => flash('Copied'), fallback); } catch (e) { fallback(); }
-}
-document.getElementById('copyBtn').addEventListener('click', e => copyText('612-756-6991', e.currentTarget, document.getElementById('phone')));
-
-/* ================= Estimate tool ================= */
-(function () {
-  const RATE = 5;                       // dollars per foot
-  const FT_PER_M = 3.28084;
-  const HOME = [44.9778, -93.2650];     // default view (Minneapolis area)
-  const PHONE = '+16127566991';
-
-  const sheet = document.getElementById('quote');
-  const openBtn = document.getElementById('openQuote');
-  const closeBtn = document.getElementById('closeQuote');
-  const addr = document.getElementById('addr');
-  const sugg = document.getElementById('sugg');
-  const hint = document.getElementById('hint');
-  const ftOut = document.getElementById('ftOut');
-  const priceOut = document.getElementById('priceOut');
-  const tools = document.getElementById('tools');
-  const sendBtn = document.getElementById('sendQuote');
-  const copyQuoteBtn = document.getElementById('copyQuote');
-  const segBtns = [...document.querySelectorAll('.seg button')];
-
-  let map, outlineLayer, frontLayer, traceGroup, pinMarker;
-  let mode = 'front';
-  let auto = { front: 0, full: 0 };       // feet
-  let address = '';
-  let lines = [[]];                        // traced lines: arrays of LatLng
-
-  /* ---- open / close ---- */
-  function open() {
-    sheet.hidden = false;
-    document.body.classList.add('sheet-open');
-    if (!map) initMap(); else map.invalidateSize();
-    setTimeout(() => addr.focus({ preventScroll: true }), 250);
-  }
-  function close() {
-    sheet.hidden = true;
-    document.body.classList.remove('sheet-open');
-    openBtn.focus();
-  }
-  openBtn.addEventListener('click', open);
-  closeBtn.addEventListener('click', close);
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden) close(); });
-
-  function setHint(text, warn) { hint.textContent = text; hint.classList.toggle('warn', !!warn); hint.hidden = !text; }
-
-  /* ---- map ---- */
-  function initMap() {
-    if (!window.L) { setHint('The map could not load. Check your connection and try again.', true); return; }
-    map = L.map('map', { zoomControl: false, attributionControl: true, tap: true }).setView(HOME, 12);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxNativeZoom: 19, maxZoom: 21,
-      attribution: 'Imagery © Esri, Maxar, Earthstar Geographics · Outlines © OpenStreetMap contributors'
-    }).addTo(map);
-    traceGroup = L.layerGroup().addTo(map);
-    map.on('click', onMapTap);
-  }
-
-  /* ---- address search (Photon / OpenStreetMap) ---- */
-  let searchTimer, searchCtl, results = [], activeIdx = -1;
-  addr.addEventListener('input', () => {
-    clearTimeout(searchTimer);
-    const q = addr.value.trim();
-    if (q.length < 4) { sugg.hidden = true; return; }
-    searchTimer = setTimeout(() => search(q), 300);
-  });
-  addr.addEventListener('keydown', e => {
-    if (sugg.hidden || !results.length) return;
-    if (e.key === 'ArrowDown') { activeIdx = (activeIdx + 1) % results.length; paintSugg(); e.preventDefault(); }
-    else if (e.key === 'ArrowUp') { activeIdx = (activeIdx - 1 + results.length) % results.length; paintSugg(); e.preventDefault(); }
-    else if (e.key === 'Enter') { pick(results[Math.max(activeIdx, 0)]); e.preventDefault(); }
-  });
-
-  async function search(q) {
-    if (searchCtl) searchCtl.abort();
-    searchCtl = new AbortController();
-    const c = map ? map.getCenter() : { lat: HOME[0], lng: HOME[1] };
-    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=en&lat=${c.lat}&lon=${c.lng}`;
-    try {
-      const res = await fetch(url, { signal: searchCtl.signal });
-      const data = await res.json();
-      results = (data.features || [])
-        .filter(f => !f.properties.countrycode || f.properties.countrycode === 'US')
-        .map(f => {
-          const p = f.properties;
-          const line1 = [p.housenumber, p.street || p.name].filter(Boolean).join(' ') || p.name || '';
-          const line2 = [p.city || p.town || p.village || p.county, p.state, p.postcode].filter(Boolean).join(', ');
-          return { line1, line2, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0], hasNumber: !!p.housenumber };
-        })
-        .sort((a, b) => b.hasNumber - a.hasNumber);
-      activeIdx = -1;
-      paintSugg();
-    } catch (err) {
-      if (err.name !== 'AbortError') setHint('Address search is unavailable right now. Try again in a moment.', true);
-    }
-  }
-  function paintSugg() {
-    sugg.innerHTML = '';
-    if (!results.length) {
-      const li = document.createElement('li'); li.textContent = 'No matches. Try adding your city.'; li.style.cursor = 'default';
-      sugg.appendChild(li); sugg.hidden = false; return;
-    }
-    results.forEach((r, i) => {
-      const li = document.createElement('li');
-      li.setAttribute('role', 'option');
-      if (i === activeIdx) li.classList.add('active');
-      li.innerHTML = `${esc(r.line1)}<small>${esc(r.line2)}</small>`;
-      li.addEventListener('click', () => pick(r));
-      sugg.appendChild(li);
-    });
-    sugg.hidden = false;
-  }
-  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
-  function pick(r) {
-    if (!r) return;
-    address = [r.line1, r.line2].filter(Boolean).join(', ');
-    addr.value = address;
-    sugg.hidden = true;
-    addr.blur();
-    map.setView([r.lat, r.lon], 20);
-    if (pinMarker) pinMarker.remove();
-    pinMarker = L.circleMarker([r.lat, r.lon], { radius: 6, color: '#0c1f17', weight: 2, fillColor: '#f2c35b', fillOpacity: 1 }).addTo(map);
-    resetTrace();
-    findBuilding(r.lat, r.lon);
-  }
-
-  /* ---- building outline (OpenStreetMap via Overpass) ---- */
-  async function findBuilding(lat, lon) {
-    clearOutline();
-    auto = { front: 0, full: 0 };
-    setHint('Finding your roof outline…');
-    update();
-    const q = `[out:json][timeout:20];way(around:45,${lat},${lon})["building"];out geom;`;
-    try {
-      const res = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(q)
-      });
-      const data = await res.json();
-      const ways = (data.elements || []).filter(e => e.geometry && e.geometry.length > 3);
-      if (!ways.length) return noOutline();
-
-      const pt = [lat, lon];
-      let best = ways.find(w => inside(pt, w.geometry));
-      if (!best) {
-        best = ways.slice().sort((a, b) => distTo(pt, a.geometry) - distTo(pt, b.geometry))[0];
-        if (distTo(pt, best.geometry) > 35) return noOutline();
-      }
-      const ring = best.geometry.map(g => L.latLng(g.lat, g.lon));
-      outlineLayer = L.polygon(ring, { color: '#f2c35b', weight: 2, dashArray: '6 6', fillColor: '#f2c35b', fillOpacity: .08 }).addTo(map);
-
-      // whole-house perimeter
-      let per = 0;
-      for (let i = 0; i < ring.length - 1; i++) per += map.distance(ring[i], ring[i + 1]);
-      // front: longest straight side (consecutive segments merged when nearly in line)
-      const side = longestSide(ring);
-      auto = { full: per * FT_PER_M, front: side.len * FT_PER_M };
-      frontLayer = L.polyline(side.pts, { color: '#ffd977', weight: 6, opacity: .95 }).addTo(map);
-      map.fitBounds(outlineLayer.getBounds(), { padding: [70, 70], maxZoom: 20 });
-      setHint(mode === 'trace' ? 'Tap along your roofline to trace it' : 'Not quite right? Tap "Trace it" to draw your roofline');
-      update();
-    } catch (err) {
-      noOutline('We could not reach the outline service. Tap "Trace it" to draw your roofline.');
-    }
-  }
-  function noOutline(msg) {
-    setHint(msg || 'No outline found for this home. Tap along your roofline to trace it.', true);
-    setMode('trace');
-  }
-  function clearOutline() {
-    if (outlineLayer) outlineLayer.remove(); if (frontLayer) frontLayer.remove();
-    outlineLayer = frontLayer = null;
-  }
-  function inside(p, geom) {
-    let c = false;
-    for (let i = 0, j = geom.length - 1; i < geom.length; j = i++) {
-      const xi = geom[i].lon, yi = geom[i].lat, xj = geom[j].lon, yj = geom[j].lat;
-      if (((yi > p[0]) !== (yj > p[0])) && (p[1] < (xj - xi) * (p[0] - yi) / (yj - yi) + xi)) c = !c;
-    }
-    return c;
-  }
-  function distTo(p, geom) {
-    const ll = L.latLng(p[0], p[1]);
-    return Math.min(...geom.map(g => map.distance(ll, [g.lat, g.lon])));
-  }
-  function longestSide(ring) {
-    const k = Math.cos(ring[0].lat * Math.PI / 180);
-    const bearing = (a, b) => Math.atan2(b.lat - a.lat, (b.lng - a.lng) * k) * 180 / Math.PI;
-    const segs = [];
-    for (let i = 0; i < ring.length - 1; i++) segs.push({ a: ring[i], b: ring[i + 1], br: bearing(ring[i], ring[i + 1]), len: map.distance(ring[i], ring[i + 1]) });
-    let best = { len: 0, pts: [] }, cur = null;
-    const diff = (x, y) => { let d = Math.abs(x - y) % 360; return d > 180 ? 360 - d : d; };
-    segs.concat(segs).forEach(s => {           // loop twice so a side that wraps the start is merged
-      if (cur && diff(cur.br, s.br) < 18) { cur.len += s.len; cur.pts.push(s.b); }
-      else cur = { br: s.br, len: s.len, pts: [s.a, s.b] };
-      if (cur.len > best.len && cur.len <= totalLen(segs) / 2 + 1) best = { len: cur.len, pts: cur.pts.slice() };
-    });
-    return best;
-  }
-  const totalLen = segs => segs.reduce((t, s) => t + s.len, 0);
-
-  /* ---- modes ---- */
-  segBtns.forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
-  function setMode(m) {
-    mode = m;
-    segBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
-    tools.hidden = m !== 'trace';
-    if (frontLayer) frontLayer.setStyle({ opacity: m === 'front' ? .95 : 0 });
-    if (outlineLayer) outlineLayer.setStyle({ weight: m === 'full' ? 4 : 2, dashArray: m === 'full' ? null : '6 6' });
-    traceGroup && (m === 'trace' ? traceGroup.addTo(map) : traceGroup.remove());
-    if (m === 'trace' && address) setHint(tracedFt() ? 'Tap to keep adding points' : 'Tap each corner along the roofline you want lit');
-    else if (address && auto.full) setHint('Not quite right? Tap "Trace it" to draw your roofline');
-    update();
-  }
-
-  /* ---- tracing ---- */
-  function onMapTap(e) {
-    if (mode !== 'trace') return;
-    if (!address) { setHint('Search your address first', true); return; }
-    lines[lines.length - 1].push(e.latlng);
-    drawTrace();
-  }
-  function drawTrace() {
-    traceGroup.clearLayers();
-    lines.forEach(line => {
-      if (line.length > 1) {
-        L.polyline(line, { color: '#f2c35b', weight: 5 }).addTo(traceGroup);
-        for (let i = 0; i < line.length - 1; i++) {
-          const ft = map.distance(line[i], line[i + 1]) * FT_PER_M;
-          const mid = L.latLng((line[i].lat + line[i + 1].lat) / 2, (line[i].lng + line[i + 1].lng) / 2);
-          L.tooltip({ permanent: true, direction: 'center', className: 'len-tip' }).setLatLng(mid).setContent(Math.round(ft) + ' ft').addTo(traceGroup);
-        }
-      }
-      line.forEach(p => L.marker(p, { icon: L.divIcon({ className: 'vtx', iconSize: [14, 14] }), interactive: false }).addTo(traceGroup));
-    });
-    if (tracedFt()) setHint('Tap "+ Add a side" to start a separate roofline');
-    update();
-  }
-  function tracedFt() {
-    let m = 0;
-    lines.forEach(line => { for (let i = 0; i < line.length - 1; i++) m += map.distance(line[i], line[i + 1]); });
-    return m * FT_PER_M;
-  }
-  function resetTrace() { lines = [[]]; if (traceGroup) traceGroup.clearLayers(); }
-  document.getElementById('undoBtn').addEventListener('click', () => {
-    let line = lines[lines.length - 1];
-    if (!line.length && lines.length > 1) { lines.pop(); line = lines[lines.length - 1]; }
-    line.pop(); drawTrace();
-  });
-  document.getElementById('newLineBtn').addEventListener('click', () => {
-    if (lines[lines.length - 1].length) lines.push([]);
-    setHint('Tap the first corner of the next roofline');
-  });
-  document.getElementById('clearBtn').addEventListener('click', () => { resetTrace(); drawTrace(); });
-
-  /* ---- totals + quote ---- */
-  const modeLabel = { front: 'front of house', full: 'whole house', trace: 'traced roofline' };
-  function currentFt() { return Math.round(mode === 'trace' ? (map ? tracedFt() : 0) : auto[mode]); }
-  function update() {
-    const ft = currentFt();
-    const price = ft * RATE;
-    ftOut.textContent = ft.toLocaleString();
-    priceOut.textContent = '$' + price.toLocaleString();
-    const ready = ft > 0 && !!address;
-    sendBtn.setAttribute('aria-disabled', String(!ready));
-    sendBtn.href = 'sms:' + PHONE + '?&body=' + encodeURIComponent(quoteText());
-  }
-  function quoteText() {
-    const ft = currentFt();
-    return `Hi Ryan! I'd like a holiday lights quote.\nAddress: ${address || '(not entered)'}\nArea: ${modeLabel[mode]}\nEstimate: ${ft} ft x $${RATE}/ft = $${(ft * RATE).toLocaleString()}`;
-  }
-  copyQuoteBtn.addEventListener('click', e => copyText(quoteText(), e.currentTarget));
-  update();
-})();
 </script>
+<script src="assets/estimate.js"></script>
+<script src="assets/switcher.js"></script>
 </body>
 </html>
