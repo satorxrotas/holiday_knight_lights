@@ -32,7 +32,7 @@
     --q-display: var(--display); --q-body: var(--body); --q-radius: 4px;
   }
   *, *::before, *::after { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; }
+  html, body { height: 100%; margin: 0; overscroll-behavior: none; }
   body {
     background: radial-gradient(70% 42% at 50% 44%, #16130d 0%, var(--ink) 72%) fixed, var(--ink);
     color: var(--bone);
@@ -82,7 +82,7 @@
   h1 .b::before, h1 .b::after { content: ""; width: 1.8em; height: 1px; background: currentColor; opacity: .6; }
 
   /* ---- stage ---- */
-  .stage { position: relative; min-height: 0; touch-action: pan-y; cursor: grab; }
+  .stage { position: relative; min-height: 0; touch-action: none; cursor: grab; }
   .stage:active { cursor: grabbing; }
   .stage canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; }
   .stage .fallback { position: absolute; inset: 0; margin: auto; width: min(40vw, 20vh); height: auto; }
@@ -181,15 +181,18 @@
 </main>
 
 <script>
-/* ================= Scroll gestures: spin the helm, pan the skyline ================= */
+/* ================= Gestures: scroll/swipe spins the helm and pans the skyline; sideways drag on the helm turns it ================= */
 (function () {
   const sky = document.getElementById('skyline');
-  const state = window.hklScroll = { impulse: 0 };
-  let pan = 0, shown = 0, raf = 0, touchY = null;
-  function push(dy) {
-    if (document.body.classList.contains('sheet-open')) return;
-    state.impulse += dy * 0.015;                               // helm: scroll down spins right
-    pan = Math.max(-1, Math.min(1, pan - dy / 1400));          // skyline: scroll down slides left
+  const stage = document.getElementById('stage');
+  const S = window.hklScroll = { impulse: 0, drag: 0, dragging: false };
+  let pan = 0, shown = 0, raf = 0, lastInput = 0;
+  const open = () => document.body.classList.contains('sheet-open');
+
+  function push(dy) {                                    // dy > 0 means "scroll down"
+    if (open()) return;
+    S.impulse += dy * 0.015;                             // helm: scroll down spins right
+    pan = Math.max(-1, Math.min(1, pan - dy / 1400));    // skyline: scroll down slides left
     if (!raf) raf = requestAnimationFrame(ease);
   }
   function ease() {
@@ -197,15 +200,53 @@
     if (sky) sky.style.setProperty('--pan', shown.toFixed(4));
     raf = Math.abs(pan - shown) > 0.0005 ? requestAnimationFrame(ease) : 0;
   }
-  window.addEventListener('wheel', e => push(e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1)), { passive: true });
-  window.addEventListener('touchstart', e => { touchY = e.touches.length === 1 ? e.touches[0].clientY : null; }, { passive: true });
-  window.addEventListener('touchmove', e => {
-    if (touchY === null || e.touches.length !== 1) return;
-    const y = e.touches[0].clientY;
-    push((touchY - y) * 1.6);                                  // swipe up = scroll down
-    touchY = y;
+
+  /* mouse wheel / trackpad */
+  window.addEventListener('wheel', e => {
+    lastInput = performance.now();
+    push(e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1));
   }, { passive: true });
-  window.addEventListener('touchend', () => { touchY = null; }, { passive: true });
+
+  /* touch: vertical swipe anywhere = scroll; horizontal swipe that starts on the helm = turn it */
+  let t = null;
+  window.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1 || open()) { t = null; return; }
+    const p = e.touches[0];
+    t = { x: p.clientX, y: p.clientY, sx: p.clientX, sy: p.clientY, axis: null, onStage: !!(stage && stage.contains(e.target)), lastDx: 0 };
+  }, { passive: true });
+  window.addEventListener('touchmove', e => {
+    if (!t || e.touches.length !== 1) return;
+    const p = e.touches[0];
+    const dx = p.clientX - t.x, dy = p.clientY - t.y;
+    t.x = p.clientX; t.y = p.clientY;
+    if (!t.axis && Math.hypot(p.clientX - t.sx, p.clientY - t.sy) > 8)
+      t.axis = Math.abs(p.clientX - t.sx) > Math.abs(p.clientY - t.sy) && t.onStage ? 'x' : 'y';
+    lastInput = performance.now();
+    if (t.axis === 'x') { S.dragging = true; S.drag += dx * 0.012; t.lastDx = dx; }
+    else if (t.axis === 'y') push(-dy * 1.8);            // finger moving up = scroll down
+  }, { passive: true });
+  const touchEnd = () => {
+    if (t && t.axis === 'x') S.impulse += t.lastDx * 0.6;   // fling momentum
+    S.dragging = false; t = null;
+  };
+  window.addEventListener('touchend', touchEnd, { passive: true });
+  window.addEventListener('touchcancel', touchEnd, { passive: true });
+
+  /* mouse drag on the helm */
+  if (stage) {
+    let mx = null, lastDx = 0;
+    stage.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; mx = e.clientX; S.dragging = true; stage.setPointerCapture(e.pointerId); });
+    stage.addEventListener('pointermove', e => { if (mx === null) return; lastDx = e.clientX - mx; mx = e.clientX; S.drag += lastDx * 0.012; });
+    const up = () => { if (mx === null) return; S.impulse += lastDx * 0.6; mx = null; S.dragging = false; };
+    stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+  }
+
+  /* if a short screen makes the page really scroll, momentum scrolling counts too */
+  let lastY = window.scrollY;
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY, d = y - lastY; lastY = y;
+    if (performance.now() - lastInput > 150) push(d * 1.5);
+  }, { passive: true });
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -467,17 +508,8 @@
   resize();
 
   /* ---------- drag to turn ---------- */
-  let dragging = false, lastX = 0, vel = 0;
+  let vel = 0;
   const AUTO = reduceMotion ? 0 : 0.42;
-  stage.addEventListener('pointerdown', e => { dragging = true; lastX = e.clientX; stage.setPointerCapture(e.pointerId); });
-  stage.addEventListener('pointermove', e => {
-    if (!dragging) return;
-    const dx = e.clientX - lastX; lastX = e.clientX;
-    helm.rotation.y += dx * 0.012; vel = dx * 0.6;
-    if (reduceMotion) render(performance.now());
-  });
-  const end = () => { dragging = false; };
-  stage.addEventListener('pointerup', end); stage.addEventListener('pointercancel', end);
 
   /* ---------- loop ---------- */
   let last = 0, running = true;
@@ -496,9 +528,10 @@
   function frame(t) {
     if (!running) return;
     const dt = Math.min((t - (last || t)) / 1000, 0.05); last = t;
-    const sc = window.hklScroll;
-    if (sc && sc.impulse) { vel = Math.max(-9, Math.min(9, vel + sc.impulse)); sc.impulse = 0; }
-    if (!dragging) { helm.rotation.y += (AUTO + vel) * dt; vel *= Math.pow(0.08, dt); }
+    const sc = window.hklScroll || {};
+    if (sc.impulse) { vel = Math.max(-9, Math.min(9, vel + sc.impulse)); sc.impulse = 0; }
+    if (sc.drag) { helm.rotation.y += sc.drag; sc.drag = 0; if (reduceMotion) render(t); }
+    if (!sc.dragging) { helm.rotation.y += (AUTO + vel) * dt; vel *= Math.pow(0.08, dt); }
     if (!reduceMotion) helm.position.y = Math.sin(t / 1400) * 0.03;
     render(t);
     requestAnimationFrame(frame);
