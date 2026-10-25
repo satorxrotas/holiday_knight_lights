@@ -44,7 +44,7 @@
 
   /* ---- ambient: snow + light frame ---- */
   /* ---- Twin Cities skyline ---- */
-  #skyline { position: fixed; left: 0; right: 0; bottom: 0; width: 100%; height: clamp(160px, 36vw, 300px); pointer-events: none; z-index: 0; }
+  #skyline { position: fixed; left: -20%; bottom: 0; width: 140%; transform: translate3d(calc(var(--pan, 0) * 14.2857%), 0, 0); will-change: transform; height: clamp(160px, 36vw, 300px); pointer-events: none; z-index: 0; }
   .sky-win rect { fill: var(--champagne); opacity: .32; }
   .sky-river { fill: #090908; }
   .sky-bridge { fill: var(--sky-bridge); }
@@ -180,6 +180,34 @@
   </section>
 </main>
 
+<script>
+/* ================= Scroll gestures: spin the helm, pan the skyline ================= */
+(function () {
+  const sky = document.getElementById('skyline');
+  const state = window.hklScroll = { impulse: 0 };
+  let pan = 0, shown = 0, raf = 0, touchY = null;
+  function push(dy) {
+    if (document.body.classList.contains('sheet-open')) return;
+    state.impulse += dy * 0.015;                               // helm: scroll down spins right
+    pan = Math.max(-1, Math.min(1, pan - dy / 1400));          // skyline: scroll down slides left
+    if (!raf) raf = requestAnimationFrame(ease);
+  }
+  function ease() {
+    shown += (pan - shown) * 0.12;
+    if (sky) sky.style.setProperty('--pan', shown.toFixed(4));
+    raf = Math.abs(pan - shown) > 0.0005 ? requestAnimationFrame(ease) : 0;
+  }
+  window.addEventListener('wheel', e => push(e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1)), { passive: true });
+  window.addEventListener('touchstart', e => { touchY = e.touches.length === 1 ? e.touches[0].clientY : null; }, { passive: true });
+  window.addEventListener('touchmove', e => {
+    if (touchY === null || e.touches.length !== 1) return;
+    const y = e.touches[0].clientY;
+    push((touchY - y) * 1.6);                                  // swipe up = scroll down
+    touchY = y;
+  }, { passive: true });
+  window.addEventListener('touchend', () => { touchY = null; }, { passive: true });
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 /* ================= 3D close helm wrapped in lights ================= */
@@ -468,7 +496,9 @@
   function frame(t) {
     if (!running) return;
     const dt = Math.min((t - (last || t)) / 1000, 0.05); last = t;
-    if (!dragging) { helm.rotation.y += (AUTO + vel) * dt; vel *= Math.pow(0.04, dt); }
+    const sc = window.hklScroll;
+    if (sc && sc.impulse) { vel = Math.max(-9, Math.min(9, vel + sc.impulse)); sc.impulse = 0; }
+    if (!dragging) { helm.rotation.y += (AUTO + vel) * dt; vel *= Math.pow(0.08, dt); }
     if (!reduceMotion) helm.position.y = Math.sin(t / 1400) * 0.03;
     render(t);
     requestAnimationFrame(frame);
